@@ -40,14 +40,30 @@ const createKos = async (req, res) => {
 
     const fasilitasPgArray = parseToPgArray(fasilitas);
 
-    const latitudeValue = latitude === "" ? null : parseFloat(latitude);
-    const longitudeValue = longitude === "" ? null : parseFloat(longitude);
+    const getCoordinates = async (alamat) => {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(alamat)}`, {
+      headers: {
+        'User-Agent': 'BaCariKos/1.0 (admin@email.com)'
+      }
+    });
+      const data = await response.json();
+      console.log("Nominatim response:", data);
+
+      if (data.length === 0) return { lat: null, lon: null };
+      
+      return {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon)
+      };
+    };
+
+    const { lat, lon } = await getCoordinates(alamat);
 
     const result = await db.query(
       `INSERT INTO kos (nama, alamat, fasilitas, harga, foto_url, latitude, longitude, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [nama, alamat, fasilitasPgArray, harga, JSON.stringify(urls), latitudeValue, longitudeValue, userId]
+      [nama, alamat, fasilitasPgArray, harga, JSON.stringify(urls), lat, lon, userId]
     );
 
     res.status(201).json(result.rows[0]);
