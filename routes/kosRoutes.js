@@ -8,7 +8,7 @@ router.get("/", kosController.getAllKos);
 router.get("/:id", kosController.getKosById);
 
 router.post("/", authenticate, upload.array("foto", 5), kosController.createKos);
-router.put("/:id", authenticate, kosController.updateKos);
+router.put("/:id", authenticate, upload.array("foto", 5), kosController.updateKos);
 router.delete("/:id", authenticate, kosController.deleteKos);
 
 module.exports = router;
