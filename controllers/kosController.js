@@ -3,7 +3,7 @@ const cloudinary = require("../utils/cloudinary");
 const streamifier = require("streamifier");
 
 const createKos = async (req, res) => {
-  const { nama, alamat, fasilitas, harga, latitude, longitude } = req.body;
+  const { nama, alamat, fasilitas, harga } = req.body;
   const userId = req.user.id;
 
   const parseToPgArray = (arr) => {
@@ -41,16 +41,16 @@ const createKos = async (req, res) => {
     const fasilitasPgArray = parseToPgArray(fasilitas);
 
     const getCoordinates = async (alamat) => {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(alamat)}`, {
-      headers: {
-        'User-Agent': 'BaCariKos/1.0 (admin@email.com)'
-      }
-    });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(alamat)}`, {
+        headers: {
+          'User-Agent': 'BaCariKos/1.0 (admin@email.com)'
+        }
+      });
       const data = await response.json();
       console.log("Nominatim response:", data);
 
       if (data.length === 0) return { lat: null, lon: null };
-      
+
       return {
         lat: parseFloat(data[0].lat),
         lon: parseFloat(data[0].lon)
@@ -96,23 +96,59 @@ const getKosById = async (req, res) => {
 
 const updateKos = async (req, res) => {
   const { id } = req.params;
-  const { nama, alamat, fasilitas, harga, foto_url, latitude, longitude } =
+  const { nama, alamat, fasilitas, harga, foto_url } =
     req.body;
 
+  const parseToPgArray = (arr) => {
+    if (!arr) return "{}";
+    if (typeof arr === "string") {
+      try {
+        const parsed = JSON.parse(arr);
+        return `{${parsed.map(item => `"${item}"`).join(",")}}`;
+      } catch (e) {
+        return `{${arr}}`;
+      }
+    }
+    if (Array.isArray(arr)) {
+      return `{${arr.map(item => `"${item}"`).join(",")}}`;
+    }
+    return "{}";
+  };
+
   try {
+    const fasilitasPgArray = parseToPgArray(fasilitas);
+
+    const getCoordinates = async (alamat) => {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(alamat)}`, {
+        headers: {
+          'User-Agent': 'BaCariKos/1.0 (admin@email.com)'
+        }
+      });
+      const data = await response.json();
+      console.log("Nominatim response:", data);
+  
+      if (data.length === 0) return { lat: null, lon: null };
+  
+      return {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon)
+      };
+    }; 
+
+    const { lat, lon } = await getCoordinates(alamat);
+
     const result = await db.query(
       `UPDATE kos
       SET nama = $1, alamat = $2, fasilitas = $3, harga = $4,
-      foto_url = $5, latitude = $6, longitude = $7
-      WHERE id = $8
-      RETURNING *`,
-      [nama, alamat, fasilitas, harga, foto_url, latitude, longitude, id],
+      latitude = $5, longitude = $6 WHERE id = $7 RETURNING *`,
+      [nama, alamat, fasilitasPgArray, harga, lat, lon, id],
     );
-
     if (result.rows.length === 0)
       return res.status(404).json({ error: "Kos tidak ditemukan" });
+    
     res.json(result.rows[0]);
   } catch (err) {
+    console.error("Error di updateKos:", err);
     res.status(500).json({ error: "Gagal mengupdate data kos" });
   }
 };
