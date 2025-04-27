@@ -4,12 +4,14 @@ const jwt = require("jsonwebtoken");
 
 const register = async (req, res) => {
   const { nama, email, password } = req.body;
+  const role = "owner";
 
   try {
     const existingUser = await db.query(
       "SELECT * FROM users WHERE email = $1",
       [email],
     );
+    
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ error: "Email sudah digunakan" });
     }
@@ -17,8 +19,8 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await db.query(
-      "INSERT INTO users (nama, email, password) VALUES ($1, $2, $3) RETURNING id, nama, email",
-      [nama, email, hashedPassword],
+      "INSERT INTO users (nama, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, nama, email, role",
+      [nama, email, hashedPassword, role],
     );
 
     res
