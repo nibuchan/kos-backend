@@ -74,10 +74,23 @@ const createKos = async (req, res) => {
 };
 
 const getAllKos = async (req, res) => {
+  const { created_by } = req.query;
+
   try {
-    const result = await db.query("SELECT * FROM kos ORDER BY created_at DESC");
+    let query = "SELECT * FROM kos";
+    const params = [];
+
+    if (created_by) {
+      query += " WHERE created_by = $1 ORDER BY created_at DESC";
+      params.push(created_by);
+    } else {
+      query += " ORDER BY created_at DESC";
+    }
+
+    const result = await db.query(query, params);
     res.json(result.rows);
   } catch (err) {
+    console.error("Error di getAllKos:", err);
     res.status(500).json({ error: "Gagal mengambil data kos" });
   }
 };
